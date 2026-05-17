@@ -9,6 +9,14 @@ interface AuthFormProps {
   supabaseEnv: SupabasePublicEnv | null;
 }
 
+function getLoginMessage(errorMessage?: string, errorStatus?: number) {
+  if (errorStatus === 429 || /rate limit/i.test(errorMessage ?? "")) {
+    return "Muitas tentativas de login por email. Aguarde pelo menos 60 segundos antes de pedir outro link. Se continuar, o limite de envio do Supabase pode ter sido atingido.";
+  }
+
+  return errorMessage ?? "Não foi possível enviar o link de acesso agora.";
+}
+
 export function AuthForm({ supabaseEnv }: AuthFormProps) {
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState<string | null>(null);
@@ -33,7 +41,7 @@ export function AuthForm({ supabaseEnv }: AuthFormProps) {
             options: { emailRedirectTo: `${origin}/auth/callback` },
           });
 
-          setMessage(error ? error.message : "Enviamos um link de acesso para seu email.");
+          setMessage(error ? getLoginMessage(error.message, error.status) : "Enviamos um link de acesso para seu email.");
         });
       }}
     >
