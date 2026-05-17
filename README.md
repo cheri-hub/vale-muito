@@ -112,6 +112,7 @@ Create `.env.local` with public Supabase browser values:
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+SITE_URL=https://vale-muito.cherihub.cloud
 NEXT_PUBLIC_SITE_URL=https://vale-muito.cherihub.cloud
 NOMINATIM_USER_AGENT="ValeMuito/0.1 (your-contact@example.com)"
 UPSTASH_REDIS_REST_URL=...
@@ -122,7 +123,7 @@ RATE_LIMIT_REDIS_FAILURE_MODE=deny
 
 `NOMINATIM_USER_AGENT` is optional in local development, but recommended for production geocoding requests through OpenStreetMap Nominatim.
 
-`NEXT_PUBLIC_SITE_URL` is required in production behind a reverse proxy so auth callbacks and canonical redirects always use the public domain instead of the container host. If you intentionally rely on forwarded proxy headers instead, keep `RATE_LIMIT_TRUST_PROXY_HEADERS=true` and ensure your proxy sets trusted `X-Forwarded-*` headers.
+`SITE_URL` is required in production behind a reverse proxy so server-side auth callbacks always use the public domain instead of the container host. `NEXT_PUBLIC_SITE_URL` can mirror the same value when you want the client to know the canonical origin too. If you intentionally rely on forwarded proxy headers instead, keep `RATE_LIMIT_TRUST_PROXY_HEADERS=true` and ensure your proxy sets trusted `X-Forwarded-*` headers.
 
 Rate limiting uses Upstash Redis REST over HTTPS when `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` are set. Vercel KV is also supported through `KV_REST_API_URL` and `KV_REST_API_TOKEN`. Without those variables, the app falls back to an in-memory limiter for local development only.
 

@@ -5,6 +5,7 @@ Vale Muito runs without Supabase by falling back to local seed data. To enable t
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+SITE_URL=https://vale-muito.cherihub.cloud
 NEXT_PUBLIC_SITE_URL=https://vale-muito.cherihub.cloud
 ```
 
@@ -35,7 +36,7 @@ By default the script uses `supabase gen types --local`. To generate from a host
 
 The app uses magic-link email auth at `/login` and handles callbacks at `/auth/callback`. After the first login, create or update the matching `profiles` row. Set `role = 'admin'` for accounts that should access `/admin/moderation`.
 
-In production, set `NEXT_PUBLIC_SITE_URL` to the public frontend origin so callback redirects resolve to the real domain instead of the internal container host. Only fall back to forwarded proxy headers when `RATE_LIMIT_TRUST_PROXY_HEADERS=true` and your reverse proxy overwrites trusted `X-Forwarded-*` headers.
+In production, set `SITE_URL` to the public frontend origin so server-side callback redirects resolve to the real domain instead of the internal container host. `NEXT_PUBLIC_SITE_URL` can use the same value for browser-side features. Only fall back to forwarded proxy headers when `RATE_LIMIT_TRUST_PROXY_HEADERS=true` and your reverse proxy overwrites trusted `X-Forwarded-*` headers.
 
 ## Current Limits
 

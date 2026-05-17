@@ -3,7 +3,7 @@ import { ensureBasicProfile } from "@/lib/auth/profiles";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 function getPublicOrigin(request: NextRequest) {
-  const configuredOrigin = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, "");
+  const configuredOrigin = (process.env.SITE_URL ?? process.env.NEXT_PUBLIC_SITE_URL)?.trim().replace(/\/$/, "");
 
   if (configuredOrigin) {
     try {
