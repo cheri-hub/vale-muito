@@ -1,0 +1,35 @@
+name: valemuito
+
+services:
+  app:
+    container_name: valemuito-app
+    image: valemuito-app:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - ${VALEMUITO_ENV_FILE:-/opt/valemuito/shared/.env.production}
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: 0.0.0.0
+    ports:
+      - "127.0.0.1:${VALEMUITO_HOST_PORT:-3008}:3000"
+    networks:
+      - valemuito-internal
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /app/.next/cache
+    deploy:
+      resources:
+        limits:
+          cpus: "1.00"
+          memory: 768M
+
+networks:
+  valemuito-internal:
+    name: valemuito-internal

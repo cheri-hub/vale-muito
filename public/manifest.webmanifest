@@ -1,0 +1,17 @@
+{
+  "name": "Vale Muito",
+  "short_name": "Vale Muito",
+  "description": "Recomendações de comidas que valem o gasto.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fafaf9",
+  "theme_color": "#047857",
+  "icons": [
+    {
+      "src": "/window.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

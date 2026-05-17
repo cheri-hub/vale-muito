@@ -1,0 +1,28 @@
+# Dependencies and build output
+node_modules
+.next
+out
+coverage
+build
+
+# Git/editor state
+.git
+.gitignore
+.vscode
+.idea
+
+# Local and secret files
+.env
+.env.*
+.secrets
+*.pem
+
+# Logs/cache
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+*.tsbuildinfo
+
+# Local deploy bundles
+vps/*.tar.gz
