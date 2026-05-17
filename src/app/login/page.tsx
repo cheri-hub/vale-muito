@@ -1,4 +1,5 @@
 import { AuthForm } from "@/components/auth/AuthForm";
+import { getSupabasePublicEnv } from "@/lib/supabase/env";
 
 interface LoginPageProps {
   searchParams: Promise<{ error?: string }>;
@@ -6,6 +7,7 @@ interface LoginPageProps {
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const { error } = await searchParams;
+  const supabaseEnv = getSupabasePublicEnv();
 
   return (
     <main className="mx-auto grid min-h-[calc(100vh-4rem)] w-full max-w-md content-center px-4 py-8 sm:px-6 lg:px-8">
@@ -21,7 +23,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           Não foi possível concluir o login. Peça um novo link e tente novamente.
         </p>
       ) : null}
-      <AuthForm />
+      <AuthForm supabaseEnv={supabaseEnv} />
     </main>
   );
 }

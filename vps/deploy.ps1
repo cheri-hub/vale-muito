@@ -119,6 +119,7 @@ fi
 mkdir -p "$release_dir"
 tar -xzf "$remote_dir/releases/$archive_name" -C "$release_dir"
 printf '%s\n' "$image_ref" > "$release_dir/.deployed-image-ref"
+ln -sfn docker-compose.prod.yml "$release_dir/docker-compose.yml"
 cd "$release_dir"
 
 export VALEMUITO_ENV_FILE="$env_file"

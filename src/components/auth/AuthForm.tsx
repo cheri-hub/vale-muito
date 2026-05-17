@@ -3,8 +3,13 @@
 import { useState, useTransition } from "react";
 import { LogIn } from "lucide-react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import type { SupabasePublicEnv } from "@/lib/supabase/env";
 
-export function AuthForm() {
+interface AuthFormProps {
+  supabaseEnv: SupabasePublicEnv | null;
+}
+
+export function AuthForm({ supabaseEnv }: AuthFormProps) {
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -14,7 +19,7 @@ export function AuthForm() {
       className="grid gap-4 rounded-lg border border-stone-200 bg-white p-5 shadow-sm"
       onSubmit={(event) => {
         event.preventDefault();
-        const supabase = createBrowserSupabaseClient();
+        const supabase = createBrowserSupabaseClient(supabaseEnv);
 
         if (!supabase) {
           setMessage("Modo local ativo. Configure as env vars do Supabase para habilitar login.");

@@ -79,6 +79,7 @@ ssh vps "echo \"<github-token>\" | docker login ghcr.io -u <github-username> --p
 ## Useful remote commands
 
 ```bash
+ssh vps "cd /opt/valemuito/current && docker compose ps"
 ssh vps "docker compose -p valemuito -f /opt/valemuito/current/docker-compose.prod.yml ps"
 ssh vps "curl -fsS http://127.0.0.1:3008/ >/dev/null && echo ok"
 ssh vps "docker logs --tail=120 valemuito-app"

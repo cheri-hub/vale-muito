@@ -2,10 +2,10 @@
 
 import { createBrowserClient } from "@supabase/ssr";
 import type { Database } from "./database.types";
-import { getSupabasePublicEnv } from "./env";
+import { getSupabasePublicEnv, type SupabasePublicEnv } from "./env";
 
-export function createBrowserSupabaseClient() {
-  const env = getSupabasePublicEnv();
+export function createBrowserSupabaseClient(runtimeEnv?: SupabasePublicEnv | null) {
+  const env = runtimeEnv ?? getSupabasePublicEnv();
 
   if (!env) {
     return null;
