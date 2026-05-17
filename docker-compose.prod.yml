@@ -3,10 +3,7 @@ name: valemuito
 services:
   app:
     container_name: valemuito-app
-    image: valemuito-app:latest
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ${VALEMUITO_IMAGE:-ghcr.io/cheri-hub/vale-muito:latest}
     restart: unless-stopped
     env_file:
       - ${VALEMUITO_ENV_FILE:-/opt/valemuito/shared/.env.production}

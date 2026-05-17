@@ -60,9 +60,44 @@ $env:E2E_BASE_URL="https://vale-muito.cherihub.cloud"; npm run test:e2e
 
 ## VPS Deploy
 
-Production deploy for this project uses Docker Compose on the VPS, not Vercel. The deploy script sends a tar package over SSH, excludes `.git`, `node_modules`, `.next`, `.env*`, and `.secrets`, then rebuilds only the isolated `valemuito` Compose project on `127.0.0.1:3008`.
+Production deploy for this project uses Docker Compose on the VPS, not Vercel. The deploy script sends deploy manifests over SSH, excludes `.git`, `node_modules`, `.next`, `.env*`, and `.secrets`, then updates only the isolated `valemuito` Compose project on `127.0.0.1:3008` by pulling the published GHCR image.
 
 Public frontend URL: [https://vale-muito.cherihub.cloud](https://vale-muito.cherihub.cloud).
+
+## Container Image
+
+`.github/workflows/release-image.yml` builds the production Docker image and publishes it to GitHub Container Registry at `ghcr.io/cheri-hub/vale-muito`.
+
+The workflow runs when:
+
+- A version tag such as `v1.0.0` is pushed.
+- A GitHub Release is published.
+- It is started manually with `workflow_dispatch` from the Actions tab.
+
+Expected tags:
+
+- `latest` for stable releases and manual runs.
+- `<release-tag>` for published GitHub Releases such as `v1.0.0`.
+- `sha-<commit>` for traceability.
+
+Example pull:
+
+```bash
+docker pull ghcr.io/cheri-hub/vale-muito:latest
+```
+
+If the package is private, authenticate first:
+
+```bash
+echo "$GITHUB_TOKEN" | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password-stdin
+docker pull ghcr.io/cheri-hub/vale-muito:latest
+```
+
+To deploy a released image to the VPS:
+
+```powershell
+.\vps\deploy.ps1 -ImageTag v1.0.0
+```
 
 ```powershell
 .\vps\deploy.ps1
