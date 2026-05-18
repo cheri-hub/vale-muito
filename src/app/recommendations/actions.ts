@@ -106,12 +106,6 @@ export async function searchRecommendationPlaceSuggestionsAction(query: string):
   }
 
   const repository = await getRecommendationRepository();
-  const currentUser = await getCurrentUser();
-  const author = currentUser.profile ?? (repository.mode === "offline" ? getOfflineDemoUser("member") : null);
-
-  if (!author) {
-    return { ok: false, message: "Faça login para buscar lugares.", mode: repository.mode };
-  }
 
   if (!isGooglePlacesConfigured()) {
     return { ok: false, message: "Autocomplete de lugar indisponível. Configure GOOGLE_PLACES_API_KEY.", mode: repository.mode };
@@ -150,12 +144,6 @@ export async function autofillRecommendationPlaceAction(
   }
 
   const repository = await getRecommendationRepository();
-  const currentUser = await getCurrentUser();
-  const author = currentUser.profile ?? (repository.mode === "offline" ? getOfflineDemoUser("member") : null);
-
-  if (!author) {
-    return { ok: false, message: "Faça login para preencher o lugar automaticamente.", mode: repository.mode };
-  }
 
   if (!isGooglePlacesConfigured()) {
     return { ok: false, message: "Preenchimento automático indisponível. Configure GOOGLE_PLACES_API_KEY.", mode: repository.mode };
@@ -445,3 +433,4 @@ async function parsePhoto(value: FormDataEntryValue | null, dishName: string) {
     altText: `Foto de ${dishName}`,
   };
 }
+
