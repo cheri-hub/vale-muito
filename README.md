@@ -20,6 +20,7 @@ Open [http://localhost:3000](http://localhost:3000).
 - Supabase-ready repository layer with offline fallback.
 - Redis REST-backed rate limiting with local development fallback.
 - Recommendation form wired to a server action.
+- Google Places autocomplete for establishment lookup when configured.
 - Address geocoding and manual map selection for recommendation coordinates.
 - Public editorial rule: "Gastei para comer isso e valeu a pena."
 - Optional recommendation photos.
@@ -114,12 +115,21 @@ NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 SITE_URL=https://vale-muito.cherihub.cloud
 NEXT_PUBLIC_SITE_URL=https://vale-muito.cherihub.cloud
+GOOGLE_PLACES_API_KEY=...
 NOMINATIM_USER_AGENT="ValeMuito/0.1 (your-contact@example.com)"
 UPSTASH_REDIS_REST_URL=...
 UPSTASH_REDIS_REST_TOKEN=...
 RATE_LIMIT_TRUST_PROXY_HEADERS=true
 RATE_LIMIT_REDIS_FAILURE_MODE=deny
 ```
+
+`GOOGLE_PLACES_API_KEY` is optional. When configured, the recommendation form can autocomplete a place and autofill the address, neighborhood, and map coordinates.
+
+Restrict this key in Google Cloud Console before using it in production:
+
+- Application restriction: limit usage to your server IPs.
+- API restriction: allow only Places API (New).
+- Billing alerts: configure alerts for unusual usage or quota spikes.
 
 `NOMINATIM_USER_AGENT` is optional in local development, but recommended for production geocoding requests through OpenStreetMap Nominatim.
 

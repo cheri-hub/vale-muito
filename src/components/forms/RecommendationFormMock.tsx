@@ -2,9 +2,15 @@
 
 import dynamic from "next/dynamic";
 import Image from "next/image";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
 import { CheckCircle2, ImagePlus, LocateFixed, MapPin, Save, Search, Send } from "lucide-react";
-import { createRecommendationAction, geocodeRecommendationAddressAction, updateRecommendationAction } from "@/app/recommendations/actions";
+import {
+  autofillRecommendationPlaceAction,
+  createRecommendationAction,
+  geocodeRecommendationAddressAction,
+  searchRecommendationPlaceSuggestionsAction,
+  updateRecommendationAction,
+} from "@/app/recommendations/actions";
 import {
   categoryLabels,
   type Recommendation,
@@ -12,7 +18,9 @@ import {
   type RecommendationInput,
 } from "@/domain/recommendations";
 import type { Coordinates } from "@/lib/geolocation";
+import type { PlaceSuggestion } from "@/lib/google-places";
 import { appEditorialRule, appOfficialRegion, isRecommendationPhotoRequired } from "@/lib/product";
+import type { RepositoryMode } from "@/repositories/recommendations/recommendations-repository";
 
 const RecommendationLocationPicker = dynamic(() => import("./RecommendationLocationPicker"), {
   ssr: false,
@@ -32,10 +40,11 @@ const initialForm: RecommendationInput = {
 const defaultLocation: Coordinates = appOfficialRegion.coordinates;
 
 interface RecommendationFormMockProps {
+  placeAutocompleteEnabled?: boolean;
   recommendation?: Recommendation;
 }
 
-export function RecommendationFormMock({ recommendation }: RecommendationFormMockProps) {
+export function RecommendationFormMock({ placeAutocompleteEnabled = false, recommendation }: RecommendationFormMockProps) {
   const isEditing = Boolean(recommendation);
   const [form, setForm] = useState<RecommendationInput>(recommendation ? {
     dishName: recommendation.dishName,
@@ -54,16 +63,75 @@ export function RecommendationFormMock({ recommendation }: RecommendationFormMoc
     longitude: recommendation.longitude,
   } : defaultLocation);
   const [locationMessage, setLocationMessage] = useState<string | null>(null);
+  const [placeLookupMessage, setPlaceLookupMessage] = useState<string | null>(
+    placeAutocompleteEnabled ? "Digite o nome do lugar para tentar preencher endereço e mapa automaticamente." : null,
+  );
+  const [placeSuggestions, setPlaceSuggestions] = useState<PlaceSuggestion[]>([]);
+  const [isAutofillingPlace, startAutofillPlaceTransition] = useTransition();
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [removePhoto, setRemovePhoto] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [messageMode, setMessageMode] = useState<RepositoryMode | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [isSearchingPlaces, startPlaceSearchTransition] = useTransition();
+  const skipNextPlaceSearchRef = useRef<string | null>(null);
+  const placeSearchRequestRef = useRef(0);
 
   const validation = useMemo(() => recommendationInputSchema.safeParse(form), [form]);
   const canSubmit = validation.success && !isPending;
   const imagePreview = photoPreview ?? (!removePhoto ? recommendation?.imageUrl : null) ?? null;
+  const trimmedPlaceQuery = form.placeName.trim();
+  const placeFieldMessage = placeAutocompleteEnabled
+    ? trimmedPlaceQuery.length < 3
+      ? "Digite pelo menos 3 caracteres para buscar o lugar."
+      : placeLookupMessage
+    : null;
+
+  useEffect(() => {
+    const requestId = placeSearchRequestRef.current + 1;
+    placeSearchRequestRef.current = requestId;
+
+    if (!placeAutocompleteEnabled) {
+      return;
+    }
+
+    if (skipNextPlaceSearchRef.current === trimmedPlaceQuery) {
+      skipNextPlaceSearchRef.current = null;
+      return;
+    }
+
+    if (trimmedPlaceQuery.length < 3) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      startPlaceSearchTransition(async () => {
+        try {
+          const result = await searchRecommendationPlaceSuggestionsAction(trimmedPlaceQuery);
+
+          if (placeSearchRequestRef.current !== requestId) {
+            return;
+          }
+
+          setPlaceLookupMessage(result.message);
+          setPlaceSuggestions(result.ok ? result.data ?? [] : []);
+        } catch {
+          if (placeSearchRequestRef.current !== requestId) {
+            return;
+          }
+
+          setPlaceLookupMessage("Busca de lugar temporariamente indisponível. Você pode preencher manualmente.");
+          setPlaceSuggestions([]);
+        }
+      });
+    }, 250);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [placeAutocompleteEnabled, startPlaceSearchTransition, trimmedPlaceQuery]);
 
   useEffect(() => () => {
     if (photoPreview) {
@@ -83,6 +151,7 @@ export function RecommendationFormMock({ recommendation }: RecommendationFormMoc
             ? await updateRecommendationAction(recommendation.id, formData)
             : await createRecommendationAction(formData);
           setMessage(result.message);
+          setMessageMode(result.mode);
         });
       }}
     >
@@ -91,9 +160,11 @@ export function RecommendationFormMock({ recommendation }: RecommendationFormMoc
           <CheckCircle2 aria-hidden="true" className="mt-0.5" size={20} />
           <div>
             <p className="font-semibold">{message}</p>
-            <p className="mt-1 text-sm leading-6">
-              Sem Supabase configurado, a publicação roda em modo local. Com env vars, a mesma ação persiste no banco.
-            </p>
+            {messageMode === "offline" ? (
+              <p className="mt-1 text-sm leading-6">
+                Sem Supabase configurado, a publicação roda em modo local. Com env vars, a mesma ação persiste no banco.
+              </p>
+            ) : null}
           </div>
         </div>
       ) : null}
@@ -110,12 +181,49 @@ export function RecommendationFormMock({ recommendation }: RecommendationFormMoc
           onChange={(dishName) => setForm({ ...form, dishName })}
           placeholder="Ex.: Lamen de missô picante"
         />
-        <TextField
-          name="placeName"
-          label="Lugar"
-          value={form.placeName}
-          onChange={(placeName) => setForm({ ...form, placeName })}
+        <PlaceAutocompleteField
+          isAutocompleteEnabled={placeAutocompleteEnabled}
+          isLoading={isSearchingPlaces || isAutofillingPlace}
+          message={placeFieldMessage}
+          onChange={(placeName) => {
+            setForm((currentForm) => ({ ...currentForm, placeName }));
+          }}
+          onSelectSuggestion={(suggestion) => {
+            skipNextPlaceSearchRef.current = suggestion.placeName;
+            setPlaceSuggestions([]);
+
+            startAutofillPlaceTransition(async () => {
+              try {
+                const result = await autofillRecommendationPlaceAction(suggestion.placeId, suggestion.placeName);
+
+                setPlaceLookupMessage(result.message);
+
+                if (!result.ok || !result.data) {
+                  return;
+                }
+
+                const autofill = result.data;
+
+                setForm((currentForm) => ({
+                  ...currentForm,
+                  neighborhood: autofill.neighborhood || currentForm.neighborhood,
+                  placeName: autofill.placeName,
+                }));
+                setAddress(autofill.address);
+                setLocation({ latitude: autofill.latitude, longitude: autofill.longitude });
+                setLocationMessage(
+                  autofill.neighborhood
+                    ? "Coordenadas atualizadas pelo lugar selecionado."
+                    : "Coordenadas atualizadas pelo lugar selecionado. Revise o bairro antes de publicar.",
+                );
+              } catch {
+                setPlaceLookupMessage("Não foi possível preencher o lugar automaticamente. Complete os campos manualmente.");
+              }
+            });
+          }}
           placeholder="Ex.: Tigela Norte"
+          suggestions={placeSuggestions}
+          value={form.placeName}
         />
         <label className="space-y-1 text-sm font-medium text-stone-700">
           Categoria
@@ -332,6 +440,143 @@ export function RecommendationFormMock({ recommendation }: RecommendationFormMoc
         {isPending ? "Salvando..." : isEditing ? "Salvar alterações" : "Publicar recomendação"}
       </button>
     </form>
+  );
+}
+
+interface PlaceAutocompleteFieldProps {
+  isAutocompleteEnabled: boolean;
+  isLoading: boolean;
+  message: string | null;
+  onChange: (value: string) => void;
+  onSelectSuggestion: (suggestion: PlaceSuggestion) => void;
+  placeholder: string;
+  suggestions: PlaceSuggestion[];
+  value: string;
+}
+
+function PlaceAutocompleteField({
+  isAutocompleteEnabled,
+  isLoading,
+  message,
+  onChange,
+  onSelectSuggestion,
+  placeholder,
+  suggestions,
+  value,
+}: PlaceAutocompleteFieldProps) {
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(0);
+  const [isInputFocused, setIsInputFocused] = useState(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const listboxId = useId();
+  const statusId = useId();
+  const safeActiveSuggestionIndex = suggestions[activeSuggestionIndex] ? activeSuggestionIndex : 0;
+  const shouldShowSuggestions = isAutocompleteEnabled && isInputFocused && suggestions.length > 0;
+  const activeSuggestion = suggestions[safeActiveSuggestionIndex] ?? null;
+
+  useEffect(() => {
+    if (!isInputFocused) {
+      return;
+    }
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsInputFocused(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, [isInputFocused]);
+
+  return (
+    <label className="space-y-1 text-sm font-medium text-stone-700">
+      Lugar
+      <div ref={containerRef} className="relative">
+        <input
+          name="placeName"
+          value={value}
+          role="combobox"
+          aria-autocomplete="list"
+          aria-controls={shouldShowSuggestions ? listboxId : undefined}
+          aria-describedby={statusId}
+          aria-expanded={shouldShowSuggestions}
+          aria-activedescendant={activeSuggestion ? `${listboxId}-option-${activeSuggestion.placeId}` : undefined}
+          onChange={(event) => {
+            setActiveSuggestionIndex(0);
+            onChange(event.target.value);
+          }}
+          onFocus={() => {
+            setIsInputFocused(true);
+          }}
+          onKeyDown={(event) => {
+            if (!shouldShowSuggestions) {
+              return;
+            }
+
+            if (event.key === "ArrowDown") {
+              event.preventDefault();
+              setActiveSuggestionIndex((currentIndex) => (currentIndex + 1) % suggestions.length);
+            }
+
+            if (event.key === "ArrowUp") {
+              event.preventDefault();
+              setActiveSuggestionIndex((currentIndex) => (currentIndex - 1 + suggestions.length) % suggestions.length);
+            }
+
+            if (event.key === "Enter") {
+              event.preventDefault();
+              onSelectSuggestion(activeSuggestion ?? suggestions[0]!);
+              setIsInputFocused(false);
+            }
+
+            if (event.key === "Escape") {
+              event.preventDefault();
+              setIsInputFocused(false);
+            }
+          }}
+          placeholder={placeholder}
+          autoComplete="off"
+          className="h-11 w-full rounded-md border border-stone-200 bg-white px-3 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
+        />
+        {shouldShowSuggestions ? (
+          <div className="absolute inset-x-0 top-[calc(100%+0.375rem)] z-[500] overflow-hidden rounded-md border border-stone-200 bg-white shadow-lg">
+            <ul id={listboxId} role="listbox" className="max-h-64 overflow-y-auto py-1">
+              {suggestions.map((suggestion, index) => (
+                <li key={suggestion.placeId} role="presentation">
+                  <button
+                    id={`${listboxId}-option-${suggestion.placeId}`}
+                    type="button"
+                    role="option"
+                    aria-selected={index === safeActiveSuggestionIndex}
+                    onMouseEnter={() => setActiveSuggestionIndex(index)}
+                    onClick={() => {
+                      onSelectSuggestion(suggestion);
+                      setIsInputFocused(false);
+                    }}
+                    className={`flex w-full flex-col items-start gap-1 px-3 py-2 text-left transition hover:bg-stone-50 ${index === safeActiveSuggestionIndex ? "bg-stone-50" : ""}`}
+                  >
+                    <span className="font-semibold text-stone-900">{suggestion.placeName}</span>
+                    <span className="text-xs text-stone-500">{suggestion.secondaryText || suggestion.description}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+      </div>
+      {isAutocompleteEnabled ? (
+        <p id={statusId} aria-live="polite" className="text-xs font-medium text-stone-500">
+          {isLoading ? "Buscando lugares..." : message ?? "Escolha um lugar para preencher endereço e mapa automaticamente."}
+        </p>
+      ) : (
+        <p id={statusId} aria-live="polite" className="text-xs font-medium text-stone-500">
+          Autocomplete opcional. Configure GOOGLE_PLACES_API_KEY para preencher endereço e mapa a partir do lugar.
+        </p>
+      )}
+    </label>
   );
 }
 

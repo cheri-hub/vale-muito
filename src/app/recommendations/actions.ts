@@ -7,6 +7,7 @@ import { recommendationInputSchema, type ModerationStatus } from "@/domain/recom
 import { getCurrentUser, getOfflineDemoUser } from "@/lib/auth/current-user";
 import { canModerate } from "@/lib/auth/permissions";
 import { geocodeAddress } from "@/lib/geocoding";
+import { getPlaceAutofill, isGooglePlacesConfigured, searchPlaceSuggestions, type PlaceAutofill, type PlaceSuggestion } from "@/lib/google-places";
 import { isValidCoordinate } from "@/lib/geolocation";
 import { validateRecommendationPhoto } from "@/lib/images/recommendation-photo";
 import { appOfficialRegion } from "@/lib/product";
@@ -16,6 +17,9 @@ import { getRecommendationRepository } from "@/repositories/recommendations";
 import type { ActionResult } from "@/repositories/recommendations/recommendations-repository";
 
 const addressSchema = z.string().trim().min(5, "Informe um endereço com mais detalhes.").max(180);
+const placeIdSchema = z.string().trim().min(3).max(200);
+const placeNameSchema = z.string().trim().min(2).max(120);
+const placeQuerySchema = z.string().trim().min(3, "Digite pelo menos 3 caracteres para buscar o lugar.").max(120);
 const reportReasonSchema = z.string().trim().min(5).max(500);
 const tagSchema = z
   .string()
@@ -23,6 +27,7 @@ const tagSchema = z
   .min(2)
   .max(30)
   .regex(/^[\p{L}\p{N} -]+$/u);
+
 export async function createRecommendationAction(formData: FormData): Promise<ActionResult<{ id: string }>> {
   if (!(await isActionAllowed("create", 8, 60 * 60 * 1000))) {
     return { ok: false, message: "Muitas publicações em pouco tempo. Tente novamente mais tarde.", mode: "offline" };
@@ -93,6 +98,98 @@ export async function geocodeRecommendationAddressAction(address: string, city =
   }
 
   return { ok: true, data: coordinates, message: "Coordenadas atualizadas pelo endereço.", mode: repository.mode };
+}
+
+export async function searchRecommendationPlaceSuggestionsAction(query: string): Promise<ActionResult<PlaceSuggestion[]>> {
+  if (!(await isActionAllowed("place-search", 20, 60 * 1000))) {
+    return { ok: false, message: "Muitas buscas de lugar em pouco tempo. Tente novamente em instantes.", mode: "offline" };
+  }
+
+  const repository = await getRecommendationRepository();
+  const currentUser = await getCurrentUser();
+  const author = currentUser.profile ?? (repository.mode === "offline" ? getOfflineDemoUser("member") : null);
+
+  if (!author) {
+    return { ok: false, message: "Faça login para buscar lugares.", mode: repository.mode };
+  }
+
+  if (!isGooglePlacesConfigured()) {
+    return { ok: false, message: "Autocomplete de lugar indisponível. Configure GOOGLE_PLACES_API_KEY.", mode: repository.mode };
+  }
+
+  const parsedQuery = placeQuerySchema.safeParse(query);
+
+  if (!parsedQuery.success) {
+    return { ok: false, message: parsedQuery.error.issues[0]?.message ?? "Digite um lugar válido.", mode: repository.mode };
+  }
+
+  try {
+    const suggestions = await searchPlaceSuggestions(parsedQuery.data);
+
+    return {
+      ok: true,
+      data: suggestions,
+      message: suggestions.length > 0 ? "Lugar encontrado." : "Nenhum lugar encontrado. Você ainda pode preencher manualmente.",
+      mode: repository.mode,
+    };
+  } catch {
+    return {
+      ok: false,
+      message: "Busca de lugar temporariamente indisponível. Tente novamente.",
+      mode: repository.mode,
+    };
+  }
+}
+
+export async function autofillRecommendationPlaceAction(
+  placeId: string,
+  placeName: string,
+): Promise<ActionResult<PlaceAutofill>> {
+  if (!(await isActionAllowed("place-autofill", 12, 60 * 1000))) {
+    return { ok: false, message: "Muitas seleções de lugar em pouco tempo. Tente novamente em instantes.", mode: "offline" };
+  }
+
+  const repository = await getRecommendationRepository();
+  const currentUser = await getCurrentUser();
+  const author = currentUser.profile ?? (repository.mode === "offline" ? getOfflineDemoUser("member") : null);
+
+  if (!author) {
+    return { ok: false, message: "Faça login para preencher o lugar automaticamente.", mode: repository.mode };
+  }
+
+  if (!isGooglePlacesConfigured()) {
+    return { ok: false, message: "Preenchimento automático indisponível. Configure GOOGLE_PLACES_API_KEY.", mode: repository.mode };
+  }
+
+  const parsedPlaceId = placeIdSchema.safeParse(placeId);
+  const parsedPlaceName = placeNameSchema.safeParse(placeName);
+
+  if (!parsedPlaceId.success || !parsedPlaceName.success) {
+    return { ok: false, message: "Selecione um lugar válido da lista.", mode: repository.mode };
+  }
+
+  try {
+    const autofill = await getPlaceAutofill(parsedPlaceId.data, parsedPlaceName.data);
+
+    if (!autofill) {
+      return { ok: false, message: "Não consegui preencher esse lugar automaticamente. Complete os dados manualmente.", mode: repository.mode };
+    }
+
+    return {
+      ok: true,
+      data: autofill,
+      message: autofill.neighborhood
+        ? "Lugar preenchido automaticamente."
+        : "Lugar preenchido automaticamente. Revise o bairro antes de publicar.",
+      mode: repository.mode,
+    };
+  } catch {
+    return {
+      ok: false,
+      message: "Preenchimento automático temporariamente indisponível. Tente novamente.",
+      mode: repository.mode,
+    };
+  }
 }
 
 export async function updateRecommendationAction(id: string, formData: FormData): Promise<ActionResult<{ id: string }>> {

@@ -1,8 +1,11 @@
 import { Lightbulb } from "lucide-react";
 import { RecommendationFormMock } from "@/components/forms/RecommendationFormMock";
+import { isGooglePlacesConfigured } from "@/lib/google-places";
 import { appEditorialRule, appOfficialRegion } from "@/lib/product";
 
 export default function NewRecommendationPage() {
+  const isPlaceAutocompleteEnabled = isGooglePlacesConfigured();
+
   return (
     <main className="mx-auto grid w-full max-w-5xl gap-6 px-4 py-8 sm:px-6 lg:px-8">
       <section className="grid gap-4 lg:grid-cols-[1fr_320px] lg:items-start">
@@ -23,7 +26,7 @@ export default function NewRecommendationPage() {
           </p>
         </aside>
       </section>
-      <RecommendationFormMock />
+      <RecommendationFormMock placeAutocompleteEnabled={isPlaceAutocompleteEnabled} />
     </main>
   );
 }
