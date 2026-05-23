@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
-import { Lightbulb, LogIn, MapPin, ShieldCheck, Sparkles } from "lucide-react";
+import { Lightbulb, LogIn, MapPin, ShieldCheck, Sparkles, UserRound } from "lucide-react";
 import "leaflet/dist/leaflet.css";
 import "./globals.css";
 
@@ -86,6 +86,13 @@ export default function RootLayout({
               >
                 <LogIn aria-hidden="true" size={16} />
                 Entrar
+              </Link>
+              <Link
+                href="/profile"
+                className="hidden h-9 items-center gap-2 rounded-full px-3 text-sm font-medium text-stone-700 transition hover:bg-stone-100 md:inline-flex"
+              >
+                <UserRound aria-hidden="true" size={16} />
+                Perfil
               </Link>
             </div>
           </nav>

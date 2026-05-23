@@ -22,7 +22,7 @@ describe("checkRateLimit", () => {
 
     const fetcher = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => [{ result: 1 }, { result: "OK" }],
+      json: async () => [{ result: 1 }],
     } as Response);
     vi.stubGlobal("fetch", fetcher);
 
@@ -35,6 +35,7 @@ describe("checkRateLimit", () => {
         method: "POST",
       }),
     );
+    expect(JSON.parse(fetcher.mock.calls[0]?.[1]?.body as string)[0][0]).toBe("EVAL");
   });
 
   it("supports Vercel KV REST env var names", async () => {
@@ -43,7 +44,7 @@ describe("checkRateLimit", () => {
 
     const fetcher = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => [{ result: 6 }, { result: "OK" }],
+      json: async () => [{ result: 6 }],
     } as Response);
     vi.stubGlobal("fetch", fetcher);
 
@@ -85,14 +86,14 @@ describe("checkRateLimit", () => {
     await expect(checkRateLimit({ key, limit: 1, windowMs: 60_000 })).resolves.toBe(false);
   });
 
-  it("denies requests when Redis expiration fails", async () => {
+  it("denies requests when Redis eval returns an error", async () => {
     vi.stubEnv("UPSTASH_REDIS_REST_URL", "https://redis.example.com");
     vi.stubEnv("UPSTASH_REDIS_REST_TOKEN", "secret-token");
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => [{ result: 1 }, { result: 0 }],
+      json: async () => [{ error: "ERR eval failed" }],
     } as Response));
 
-    await expect(checkRateLimit({ key: `redis-expire:${crypto.randomUUID()}`, limit: 8, windowMs: 60_000 })).resolves.toBe(false);
+    await expect(checkRateLimit({ key: `redis-eval:${crypto.randomUUID()}`, limit: 8, windowMs: 60_000 })).resolves.toBe(false);
   });
 });

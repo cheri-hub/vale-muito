@@ -51,6 +51,7 @@ export async function createRecommendationAction(formData: FormData): Promise<Ac
     const recommendation = await repository.data.create(input, author.id);
 
     revalidatePath("/");
+    revalidatePath("/profile");
     revalidatePath("/admin/moderation");
     revalidatePath(`/recommendations/${recommendation.id}`);
 
@@ -203,6 +204,7 @@ export async function updateRecommendationAction(id: string, formData: FormData)
     const recommendation = await repository.data.update(id, input, author.id);
 
     revalidatePath("/");
+    revalidatePath("/profile");
     revalidatePath(`/recommendations/${id}`);
     revalidatePath(`/recommendations/${id}/edit`);
     revalidatePath("/admin/moderation");
@@ -239,6 +241,7 @@ export async function deleteRecommendationAction(id: string): Promise<ActionResu
     const deleted = await repository.data.delete(id, author.id);
 
     revalidatePath("/");
+    revalidatePath("/profile");
     revalidatePath(`/recommendations/${id}`);
     revalidatePath("/admin/moderation");
 

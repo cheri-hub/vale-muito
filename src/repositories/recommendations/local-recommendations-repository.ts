@@ -15,6 +15,13 @@ export class LocalRecommendationsRepository implements RecommendationRepository 
     return this.recommendations.map((recommendation) => ({ ...recommendation }));
   }
 
+  async listByAuthor(authorId: string): Promise<Recommendation[]> {
+    return this.recommendations
+      .filter((recommendation) => recommendation.author.id === authorId)
+      .sort((first, second) => Date.parse(second.createdAt) - Date.parse(first.createdAt))
+      .map((recommendation) => ({ ...recommendation }));
+  }
+
   async findById(id: string): Promise<Recommendation | null> {
     const recommendation = this.recommendations.find((item) => item.id === id);
     return recommendation ? { ...recommendation } : null;

@@ -34,6 +34,7 @@ export interface RepositoryResult<T> {
 
 export interface RecommendationRepository {
   list(): Promise<Recommendation[]>;
+  listByAuthor(authorId: string): Promise<Recommendation[]>;
   findById(id: string): Promise<Recommendation | null>;
   create(input: CreateRecommendationInput, authorId: string): Promise<Recommendation>;
   update(id: string, input: UpdateRecommendationInput, authorId: string): Promise<Recommendation | null>;

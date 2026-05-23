@@ -8,9 +8,10 @@ import { deleteRecommendationAction } from "@/app/recommendations/actions";
 
 interface OwnerRecommendationActionsProps {
   recommendationId: string;
+  redirectTo?: string;
 }
 
-export function OwnerRecommendationActions({ recommendationId }: OwnerRecommendationActionsProps) {
+export function OwnerRecommendationActions({ recommendationId, redirectTo = "/" }: OwnerRecommendationActionsProps) {
   const router = useRouter();
   const [message, setMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -38,7 +39,7 @@ export function OwnerRecommendationActions({ recommendationId }: OwnerRecommenda
               setMessage(result.message);
 
               if (result.ok) {
-                router.push("/");
+                router.push(redirectTo);
                 router.refresh();
               }
             });

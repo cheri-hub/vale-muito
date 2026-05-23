@@ -4,9 +4,15 @@ import type { Database } from "@/lib/supabase/database.types";
 
 type ProfileRow = Pick<Database["public"]["Tables"]["profiles"]["Row"], "id" | "name" | "handle" | "role">;
 type ProfileInsert = Database["public"]["Tables"]["profiles"]["Insert"];
+type ProfileUpdate = Pick<Database["public"]["Tables"]["profiles"]["Update"], "name" | "handle">;
 export type AuthUserForProfile = Pick<User, "id" | "email" | "user_metadata">;
 const fallbackDisplayName = "Usuário Vale Muito";
 const reservedNameFragments = ["admin", "administrador", "moderador", "suporte"];
+
+export interface ProfileUpdateInput {
+  name: unknown;
+  handle: unknown;
+}
 
 export async function ensureBasicProfile(
   supabase: SupabaseClient<Database>,
@@ -55,6 +61,51 @@ export function buildDefaultProfile(user: AuthUserForProfile): ProfileInsert {
   };
 }
 
+export function parseProfileUpdateInput(input: ProfileUpdateInput): ProfileUpdate | Error {
+  const name = normalizeEditableDisplayName(input.name);
+
+  if (name instanceof Error) {
+    return name;
+  }
+
+  const handle = normalizeEditableHandle(input.handle);
+
+  if (handle instanceof Error) {
+    return handle;
+  }
+
+  return { name, handle };
+}
+
+export async function updateUserProfile(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+  input: ProfileUpdateInput,
+): Promise<UserProfile> {
+  const profile = parseProfileUpdateInput(input);
+
+  if (profile instanceof Error) {
+    throw profile;
+  }
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .update({ name: profile.name, handle: profile.handle })
+    .eq("id", userId)
+    .select("id,name,handle,role")
+    .single();
+
+  if (error?.code === "23505") {
+    throw new Error("Esse username já está em uso.");
+  }
+
+  if (error || !data) {
+    throw new Error("Não foi possível atualizar o perfil.");
+  }
+
+  return mapProfile(data);
+}
+
 async function findProfileById(supabase: SupabaseClient<Database>, userId: string): Promise<UserProfile | null> {
   const { data, error } = await supabase
     .from("profiles")
@@ -98,6 +149,58 @@ function normalizeDisplayName(value: string): string {
   }
 
   return normalized;
+}
+
+function normalizeEditableDisplayName(value: unknown): string | Error {
+  if (typeof value !== "string") {
+    return new Error("Informe um nome válido.");
+  }
+
+  const normalized = sanitizeDisplayName(value);
+  const lowerName = normalized.toLocaleLowerCase("pt-BR");
+
+  if (normalized.length < 2 || normalized.length > 80) {
+    return new Error("O nome deve ter entre 2 e 80 caracteres.");
+  }
+
+  if (reservedNameFragments.some((fragment) => lowerName.includes(fragment))) {
+    return new Error("Este nome não está disponível.");
+  }
+
+  return normalized;
+}
+
+function normalizeEditableHandle(value: unknown): string | Error {
+  if (typeof value !== "string") {
+    return new Error("Informe um username válido.");
+  }
+
+  const rawHandle = value.trim().replace(/^@+/, "");
+  const slug = slugifyHandle(rawHandle);
+
+  if (reservedNameFragments.some((fragment) => slug.includes(fragment))) {
+    return new Error("Este username não está disponível.");
+  }
+
+  if (slug === "usuario" && !rawHandle.toLocaleLowerCase("pt-BR").includes("usuario")) {
+    return new Error("Este username não está disponível.");
+  }
+
+  if (slug.length < 2 || slug.length > 24) {
+    return new Error("O username deve ter entre 2 e 24 caracteres.");
+  }
+
+  return `@${slug}`;
+}
+
+function sanitizeDisplayName(value: string): string {
+  return value
+    .normalize("NFKC")
+    .replace(/<[^>]*>/g, "")
+    .replace(/[\u0000-\u001f\u007f<>\\{}[\]]/g, "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .slice(0, 80);
 }
 
 function slugifyHandle(value: string): string {

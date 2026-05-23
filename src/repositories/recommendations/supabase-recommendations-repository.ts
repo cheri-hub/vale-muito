@@ -43,6 +43,20 @@ export class SupabaseRecommendationsRepository implements RecommendationReposito
     return data.map((row) => this.mapRecommendationRow(row as RecommendationRowWithRelations));
   }
 
+  async listByAuthor(authorId: string): Promise<Recommendation[]> {
+    const { data, error } = await this.supabase
+      .from("recommendations")
+      .select(recommendationSelect)
+      .eq("author_id", authorId)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      throw new Error("Não foi possível carregar suas publicações.");
+    }
+
+    return data.map((row) => this.mapRecommendationRow(row as RecommendationRowWithRelations));
+  }
+
   async findById(id: string): Promise<Recommendation | null> {
     const { data, error } = await this.supabase
       .from("recommendations")

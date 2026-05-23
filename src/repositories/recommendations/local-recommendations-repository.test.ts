@@ -43,6 +43,21 @@ describe("LocalRecommendationsRepository", () => {
     await expect(repository.list()).resolves.toHaveLength(1);
   });
 
+  it("lists only recommendations owned by an author", async () => {
+    const repository = new LocalRecommendationsRepository();
+
+    const recommendations = await repository.listByAuthor("user-bia");
+
+    expect(recommendations.length).toBeGreaterThan(0);
+    expect(recommendations.every((recommendation) => recommendation.author.id === "user-bia")).toBe(true);
+  });
+
+  it("returns an empty list when an author has no recommendations", async () => {
+    const repository = new LocalRecommendationsRepository();
+
+    await expect(repository.listByAuthor("missing-user")).resolves.toEqual([]);
+  });
+
   it("reports and auto-hides after enough reports", async () => {
     const repository = new LocalRecommendationsRepository();
 

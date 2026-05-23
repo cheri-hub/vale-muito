@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildDefaultProfile, type AuthUserForProfile } from "./profiles";
+import { buildDefaultProfile, parseProfileUpdateInput, type AuthUserForProfile } from "./profiles";
 
 describe("buildDefaultProfile", () => {
   it("creates a member profile from auth metadata", () => {
@@ -37,6 +37,32 @@ describe("buildDefaultProfile", () => {
 
     expect(profile.name).toBe("Usuário Vale Muito");
     expect(profile.handle).toBe("@usuario-12345678");
+  });
+});
+
+describe("parseProfileUpdateInput", () => {
+  it("normalizes a display name and handle", () => {
+    expect(parseProfileUpdateInput({ name: "  Bia   Ramos  ", handle: "Bia Ramos" })).toEqual({
+      name: "Bia Ramos",
+      handle: "@bia-ramos",
+    });
+  });
+
+  it("accepts handles already prefixed with at sign", () => {
+    expect(parseProfileUpdateInput({ name: "Luis Miranda", handle: "@Luis.Miranda" })).toEqual({
+      name: "Luis Miranda",
+      handle: "@luis-miranda",
+    });
+  });
+
+  it("rejects short names and reserved names", () => {
+    expect(parseProfileUpdateInput({ name: "A", handle: "bia" })).toBeInstanceOf(Error);
+    expect(parseProfileUpdateInput({ name: "Admin Oficial", handle: "bia" })).toBeInstanceOf(Error);
+  });
+
+  it("rejects invalid handles", () => {
+    expect(parseProfileUpdateInput({ name: "Bia Ramos", handle: "a" })).toBeInstanceOf(Error);
+    expect(parseProfileUpdateInput({ name: "Bia Ramos", handle: "admin" })).toBeInstanceOf(Error);
   });
 });
 

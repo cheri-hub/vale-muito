@@ -17,6 +17,12 @@ const buckets = new Map<string, RateLimitBucket>();
 const MAX_BUCKETS = 10_000;
 let lastCleanupAt = 0;
 
+const REDIS_RATE_LIMIT_SCRIPT = `
+local current = redis.call("INCR", KEYS[1])
+redis.call("PEXPIRE", KEYS[1], ARGV[1])
+return current
+`;
+
 export interface RateLimitOptions {
   key: string;
   limit: number;
@@ -52,8 +58,7 @@ async function checkRedisRateLimit({ key, limit, windowMs }: RateLimitOptions, c
       "Content-Type": "application/json",
     },
     body: JSON.stringify([
-      ["INCR", bucketKey],
-      ["PEXPIRE", bucketKey, String(windowMs)],
+      ["EVAL", REDIS_RATE_LIMIT_SCRIPT, "1", bucketKey, String(windowMs)],
     ]),
     cache: "no-store",
   });
@@ -62,11 +67,10 @@ async function checkRedisRateLimit({ key, limit, windowMs }: RateLimitOptions, c
     return false;
   }
 
-  const results = (await response.json()) as [RedisCommandResult<number | string>, RedisCommandResult<string | number>];
+  const results = (await response.json()) as [RedisCommandResult<number | string>];
   const countResult = results[0];
-  const expireResult = results[1];
 
-  if (countResult?.error || expireResult?.error || expireResult?.result === 0) {
+  if (countResult?.error) {
     return false;
   }
 
