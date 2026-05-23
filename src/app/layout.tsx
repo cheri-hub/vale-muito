@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
-import { Lightbulb, LogIn, MapPin, ShieldCheck, Sparkles, UserRound } from "lucide-react";
+import { Lightbulb, LogIn, MapPin, Sparkles, UserRound } from "lucide-react";
+import { AdminNavLink } from "@/components/admin/AdminNavLink";
 import "leaflet/dist/leaflet.css";
 import "./globals.css";
 
@@ -73,13 +74,7 @@ export default function RootLayout({
                 <Lightbulb aria-hidden="true" size={16} />
                 Critérios
               </Link>
-              <Link
-                href="/admin/moderation"
-                className="hidden h-9 items-center gap-2 rounded-full px-3 text-sm font-medium text-stone-700 transition hover:bg-stone-100 sm:inline-flex"
-              >
-                <ShieldCheck aria-hidden="true" size={16} />
-                Admin
-              </Link>
+              <AdminNavLink />
               <Link
                 href="/login"
                 className="hidden h-9 items-center gap-2 rounded-full px-3 text-sm font-medium text-stone-700 transition hover:bg-stone-100 md:inline-flex"
