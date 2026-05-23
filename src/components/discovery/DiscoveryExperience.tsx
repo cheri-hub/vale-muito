@@ -23,6 +23,7 @@ export function DiscoveryExperience({ recommendations }: DiscoveryExperienceProp
   const [locationStatus, setLocationStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
 
   const neighborhoods = useMemo(() => getUniqueNeighborhoods(recommendations), [recommendations]);
+  const averageValueScore = useMemo(() => getAverageValueScore(recommendations), [recommendations]);
   const visibleRecommendations = useMemo(
     () => filterRecommendations(recommendations, filters),
     [filters, recommendations],
@@ -71,7 +72,7 @@ export function DiscoveryExperience({ recommendations }: DiscoveryExperienceProp
           <div className="grid grid-cols-3 gap-3 text-center">
             <Metric label="recomendações" value={String(recommendations.length)} />
             <Metric label="bairros" value={String(neighborhoods.length)} />
-            <Metric label="nota média" value="4.6" />
+            <Metric label="nota média" value={averageValueScore} />
           </div>
           <Link
             href="/recommend/new"
@@ -113,6 +114,16 @@ export function DiscoveryExperience({ recommendations }: DiscoveryExperienceProp
       </div>
     </main>
   );
+}
+
+function getAverageValueScore(recommendations: Recommendation[]) {
+  if (recommendations.length === 0) {
+    return "—";
+  }
+
+  const totalScore = recommendations.reduce((sum, recommendation) => sum + recommendation.valueScore, 0);
+
+  return (totalScore / recommendations.length).toFixed(1);
 }
 
 interface MetricProps {
