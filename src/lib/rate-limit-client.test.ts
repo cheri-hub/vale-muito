@@ -14,13 +14,19 @@ describe("getRateLimitClientKey", () => {
     expect(getRateLimitClientKey(headerStore, {})).toBe("local");
   });
 
-  it("uses the first valid forwarded IP when trusted proxy headers are enabled", () => {
+  it("uses the last valid forwarded IP when trusted proxy headers are enabled", () => {
     const headerStore = headers({ "x-forwarded-for": "203.0.113.10, 198.51.100.20" });
 
-    expect(getRateLimitClientKey(headerStore, { RATE_LIMIT_TRUST_PROXY_HEADERS: "true" })).toBe("203.0.113.10");
+    expect(getRateLimitClientKey(headerStore, { RATE_LIMIT_TRUST_PROXY_HEADERS: "true" })).toBe("198.51.100.20");
   });
 
-  it("falls back to x-real-ip and Cloudflare headers", () => {
+  it("prefers x-real-ip and falls back to Cloudflare headers", () => {
+    expect(
+      getRateLimitClientKey(
+        headers({ "x-real-ip": "2001:db8::1", "x-forwarded-for": "203.0.113.10, 198.51.100.20" }),
+        { RATE_LIMIT_TRUST_PROXY_HEADERS: "true" },
+      ),
+    ).toBe("2001:db8::1");
     expect(
       getRateLimitClientKey(headers({ "x-real-ip": "2001:db8::1" }), { RATE_LIMIT_TRUST_PROXY_HEADERS: "true" }),
     ).toBe("2001:db8::1");

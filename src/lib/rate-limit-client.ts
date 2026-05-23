@@ -10,14 +10,14 @@ export function getRateLimitClientKey(headers: HeaderReader, env: Partial<NodeJS
   }
 
   return (
-    getFirstForwardedIp(headers.get("x-forwarded-for")) ??
     getValidIp(headers.get("x-real-ip")) ??
+    getLastForwardedIp(headers.get("x-forwarded-for")) ??
     getValidIp(headers.get("cf-connecting-ip")) ??
     "unknown"
   );
 }
 
-function getFirstForwardedIp(value: string | null): string | null {
+function getLastForwardedIp(value: string | null): string | null {
   if (!value) {
     return null;
   }
@@ -25,6 +25,7 @@ function getFirstForwardedIp(value: string | null): string | null {
   return value
     .split(",")
     .map((candidate) => getValidIp(candidate))
+    .reverse()
     .find((candidate): candidate is string => candidate !== null) ?? null;
 }
 
