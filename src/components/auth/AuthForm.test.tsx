@@ -60,6 +60,7 @@ describe("AuthForm", () => {
   it("sends an SMS OTP to the normalized phone number", async () => {
     render(<AuthForm />);
 
+    fireEvent.click(screen.getByRole("button", { name: /sms/i }));
     fireEvent.change(screen.getByLabelText("Telefone"), { target: { value: "+55 11 99999-0000" } });
     fireEvent.click(screen.getByRole("button", { name: /enviar código/i }));
 
@@ -78,6 +79,7 @@ describe("AuthForm", () => {
     });
     render(<AuthForm />);
 
+    fireEvent.click(screen.getByRole("button", { name: /sms/i }));
     fireEvent.change(screen.getByLabelText("Telefone"), { target: { value: "11999990000" } });
     fireEvent.click(screen.getByRole("button", { name: /enviar código/i }));
 
@@ -88,6 +90,7 @@ describe("AuthForm", () => {
   it("verifies the SMS code, ensures the profile, and redirects home", async () => {
     render(<AuthForm />);
 
+    fireEvent.click(screen.getByRole("button", { name: /sms/i }));
     fireEvent.change(screen.getByLabelText("Telefone"), { target: { value: "+5511999990000" } });
     fireEvent.click(screen.getByRole("button", { name: /enviar código/i }));
     fireEvent.change(await screen.findByLabelText("Código SMS"), { target: { value: "123 456" } });
@@ -108,6 +111,7 @@ describe("AuthForm", () => {
     });
     render(<AuthForm />);
 
+    fireEvent.click(screen.getByRole("button", { name: /sms/i }));
     fireEvent.change(screen.getByLabelText("Telefone"), { target: { value: "+5511999990000" } });
     fireEvent.click(screen.getByRole("button", { name: /enviar código/i }));
     fireEvent.change(await screen.findByLabelText("Código SMS"), { target: { value: "123456" } });
@@ -120,7 +124,6 @@ describe("AuthForm", () => {
   it("keeps email magic link as a fallback login option", async () => {
     render(<AuthForm />);
 
-    fireEvent.click(screen.getByRole("button", { name: /email/i }));
     fireEvent.change(screen.getByLabelText("Email"), { target: { value: "bia@example.com" } });
     fireEvent.click(screen.getByRole("button", { name: /enviar link/i }));
 

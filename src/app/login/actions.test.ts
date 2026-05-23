@@ -105,6 +105,20 @@ describe("login actions", () => {
     });
   });
 
+  it("does not expose unexpected email provider errors", async () => {
+    createServerSupabaseClientMock.mockResolvedValue({
+      auth: {
+        signInWithOtp: vi.fn().mockResolvedValue({ error: { message: "internal provider stack trace", status: 500 } }),
+      },
+    });
+
+    await expect(sendLoginEmailOtpAction("bia@example.com")).resolves.toEqual({
+      ok: false,
+      message: "Não foi possível enviar o link de acesso agora.",
+      mode: "supabase",
+    });
+  });
+
   it("sends a SMS OTP with server-side validation and rate limiting", async () => {
     await expect(sendLoginSmsOtpAction("+55 11 99999-0000")).resolves.toEqual({
       ok: true,
@@ -140,6 +154,34 @@ describe("login actions", () => {
     });
   });
 
+  it("returns a friendly fallback message when the SMS provider is unsupported", async () => {
+    createServerSupabaseClientMock.mockResolvedValue({
+      auth: {
+        signInWithOtp: vi.fn().mockResolvedValue({ error: { message: "Unsupported phone provider", status: 400 } }),
+      },
+    });
+
+    await expect(sendLoginSmsOtpAction("+5511999990000")).resolves.toEqual({
+      ok: false,
+      message: "SMS não está disponível agora. Use a aba Email para entrar.",
+      mode: "supabase",
+    });
+  });
+
+  it("does not expose unexpected SMS provider errors", async () => {
+    createServerSupabaseClientMock.mockResolvedValue({
+      auth: {
+        signInWithOtp: vi.fn().mockResolvedValue({ error: { message: "provider internal failure", status: 500 } }),
+      },
+    });
+
+    await expect(sendLoginSmsOtpAction("+5511999990000")).resolves.toEqual({
+      ok: false,
+      message: "Não foi possível enviar o código de acesso agora.",
+      mode: "supabase",
+    });
+  });
+
   it("verifies a SMS OTP and ensures the authenticated profile", async () => {
     await expect(verifyLoginSmsOtpAction("+5511999990000", "123 456")).resolves.toEqual({
       ok: true,
@@ -171,6 +213,20 @@ describe("login actions", () => {
       mode: "supabase",
     });
     expect(ensureBasicProfileMock).not.toHaveBeenCalled();
+  });
+
+  it("does not expose unexpected SMS verification errors", async () => {
+    createServerSupabaseClientMock.mockResolvedValue({
+      auth: {
+        verifyOtp: vi.fn().mockResolvedValue({ data: { user: null }, error: { message: "auth backend details", status: 500 } }),
+      },
+    });
+
+    await expect(verifyLoginSmsOtpAction("+5511999990000", "123456")).resolves.toEqual({
+      ok: false,
+      message: "Não foi possível verificar o código agora.",
+      mode: "supabase",
+    });
   });
 
   it("ensures a profile for the authenticated user", async () => {

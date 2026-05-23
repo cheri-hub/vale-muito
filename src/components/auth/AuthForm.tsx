@@ -7,7 +7,7 @@ import { sendLoginEmailOtpAction, sendLoginSmsOtpAction, verifyLoginSmsOtpAction
 
 export function AuthForm() {
   const router = useRouter();
-  const [authMode, setAuthMode] = useState<"sms" | "email">("sms");
+  const [authMode, setAuthMode] = useState<"sms" | "email">("email");
   const [phone, setPhone] = useState("");
   const [verifiedPhone, setVerifiedPhone] = useState("");
   const [code, setCode] = useState("");
@@ -69,7 +69,8 @@ export function AuthForm() {
 
             router.push("/");
             router.refresh();
-          } catch {
+          } catch (error) {
+            console.error("[AuthForm] Login action failed:", error);
             setMessage("Ocorreu um erro inesperado. Tente novamente.");
           }
         });
@@ -78,17 +79,17 @@ export function AuthForm() {
       <div className="grid grid-cols-2 rounded-md border border-stone-200 bg-stone-50 p-1 text-sm font-semibold">
         <button
           type="button"
-          onClick={() => setMode("sms")}
-          className={`h-10 rounded-sm transition ${authMode === "sms" ? "bg-white text-emerald-800 shadow-sm" : "text-stone-600"}`}
-        >
-          SMS
-        </button>
-        <button
-          type="button"
           onClick={() => setMode("email")}
           className={`h-10 rounded-sm transition ${authMode === "email" ? "bg-white text-emerald-800 shadow-sm" : "text-stone-600"}`}
         >
           Email
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode("sms")}
+          className={`h-10 rounded-sm transition ${authMode === "sms" ? "bg-white text-emerald-800 shadow-sm" : "text-stone-600"}`}
+        >
+          SMS
         </button>
       </div>
       {authMode === "sms" ? (

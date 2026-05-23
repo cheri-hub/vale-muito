@@ -233,7 +233,7 @@ function getEmailLoginMessage(errorMessage?: string, errorStatus?: number) {
     return "Muitas tentativas de login por email. Aguarde um pouco antes de pedir outro link.";
   }
 
-  return errorMessage ?? "Não foi possível enviar o link de acesso agora.";
+  return "Não foi possível enviar o link de acesso agora.";
 }
 
 function getOtpSendMessage(errorMessage?: string, errorStatus?: number) {
@@ -241,7 +241,11 @@ function getOtpSendMessage(errorMessage?: string, errorStatus?: number) {
     return "Muitas tentativas de login por SMS. Aguarde um pouco antes de pedir outro código.";
   }
 
-  return errorMessage ?? "Não foi possível enviar o código de acesso agora.";
+  if (/unsupported phone provider/i.test(errorMessage ?? "")) {
+    return "SMS não está disponível agora. Use a aba Email para entrar.";
+  }
+
+  return "Não foi possível enviar o código de acesso agora.";
 }
 
 function getOtpVerifyMessage(errorMessage?: string, errorStatus?: number) {
@@ -253,7 +257,7 @@ function getOtpVerifyMessage(errorMessage?: string, errorStatus?: number) {
     return "Código inválido ou expirado. Peça um novo código e tente novamente.";
   }
 
-  return errorMessage ?? "Não foi possível verificar o código agora.";
+  return "Não foi possível verificar o código agora.";
 }
 
 async function isLoginActionAllowed(action: string, limit: number, windowMs: number): Promise<boolean> {
