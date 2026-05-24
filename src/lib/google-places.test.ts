@@ -59,14 +59,29 @@ describe("google places", () => {
     });
   });
 
-  it("degrades gracefully when the request fails or no API key exists", async () => {
+  it("returns empty results when no API key exists", async () => {
     const fetcher = vi.fn().mockResolvedValue({ ok: false, json: async () => ({}) });
 
     await expect(searchPlaceSuggestions("tigela", { apiKey: "", fetcher })).resolves.toEqual([]);
-    await expect(searchPlaceSuggestions("tigela", { apiKey: "test-key", fetcher })).resolves.toEqual([]);
-    await expect(getPlaceAutofill("abc123", "Tigela Norte", { apiKey: "test-key", fetcher })).resolves.toBeNull();
+    await expect(getPlaceAutofill("abc123", "Tigela Norte", { apiKey: "", fetcher })).resolves.toBeNull();
     expect(isGooglePlacesConfigured("test-key")).toBe(true);
     expect(isGooglePlacesConfigured("")).toBe(false);
+  });
+
+  it("throws when the provider responds with an error", async () => {
+    const fetcher = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 403,
+      statusText: "Forbidden",
+      json: async () => ({ error: { message: "Places API disabled" } }),
+    });
+
+    await expect(searchPlaceSuggestions("tigela", { apiKey: "test-key", fetcher })).rejects.toThrow(
+      "HTTP 403 Forbidden: Places API disabled",
+    );
+    await expect(getPlaceAutofill("abc123", "Tigela Norte", { apiKey: "test-key", fetcher })).rejects.toThrow(
+      "HTTP 403 Forbidden: Places API disabled",
+    );
   });
 
   it("falls back to locality when a specific neighborhood component is missing", async () => {
@@ -97,10 +112,10 @@ describe("google places", () => {
     });
   });
 
-  it("returns empty results when the provider throws", async () => {
+  it("throws when the provider request fails", async () => {
     const fetcher = vi.fn().mockRejectedValue(new Error("timeout"));
 
-    await expect(searchPlaceSuggestions("Cafe Sao Jose", { apiKey: "test-key", fetcher })).resolves.toEqual([]);
-    await expect(getPlaceAutofill("abc123", "Cafe Sao Jose", { apiKey: "test-key", fetcher })).resolves.toBeNull();
+    await expect(searchPlaceSuggestions("Cafe Sao Jose", { apiKey: "test-key", fetcher })).rejects.toThrow("timeout");
+    await expect(getPlaceAutofill("abc123", "Cafe Sao Jose", { apiKey: "test-key", fetcher })).rejects.toThrow("timeout");
   });
 });

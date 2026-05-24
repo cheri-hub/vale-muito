@@ -104,7 +104,7 @@ export async function searchPlaceSuggestions(
     });
 
     if (!response.ok) {
-      return [];
+      throw await createGooglePlacesResponseError(response);
     }
 
     const payload = (await response.json()) as AutocompleteResponse;
@@ -122,7 +122,7 @@ export async function searchPlaceSuggestions(
       .slice(0, 5);
   } catch (error: unknown) {
     logGooglePlacesError("autocomplete", error);
-    return [];
+    throw error;
   }
 }
 
@@ -154,7 +154,7 @@ export async function getPlaceAutofill(
     );
 
     if (!response.ok) {
-      return null;
+      throw await createGooglePlacesResponseError(response);
     }
 
     const payload = (await response.json()) as PlaceDetailsResponse;
@@ -176,7 +176,26 @@ export async function getPlaceAutofill(
     };
   } catch (error: unknown) {
     logGooglePlacesError("details", error);
-    return null;
+    throw error;
+  }
+}
+
+async function createGooglePlacesResponseError(response: Response): Promise<Error> {
+  const providerMessage = await readGooglePlacesErrorMessage(response);
+  const statusText = response.statusText ? ` ${response.statusText}` : "";
+  const details = providerMessage ? `: ${providerMessage}` : "";
+
+  return new Error(`HTTP ${response.status}${statusText}${details}`);
+}
+
+async function readGooglePlacesErrorMessage(response: Response): Promise<string> {
+  try {
+    const payload = (await response.json()) as { error?: { message?: unknown } };
+    const message = payload.error?.message;
+
+    return typeof message === "string" ? message : "";
+  } catch {
+    return "";
   }
 }
 
