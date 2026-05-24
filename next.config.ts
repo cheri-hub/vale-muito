@@ -1,8 +1,9 @@
 import type { NextConfig } from "next";
+import { getConfiguredSupabaseUrl } from "./src/lib/supabase/config";
 
 const recommendationPhotoPathname = "/storage/v1/object/public/recommendation-photos/**";
 
-export function getSupabaseImageRemotePatterns(supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL) {
+export function getSupabaseImageRemotePatterns(supabaseUrl = getConfiguredSupabaseUrl()) {
   if (!supabaseUrl) {
     return [];
   }

@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { getConfiguredSupabaseUrl } from "./lib/supabase/config";
 
 const staticImageContentSources = [
   "'self'",
@@ -8,7 +9,7 @@ const staticImageContentSources = [
   "https://*.tile.openstreetmap.org",
 ];
 
-export function getSupabaseContentSources(supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL): string[] {
+export function getSupabaseContentSources(supabaseUrl = getConfiguredSupabaseUrl()): string[] {
   if (!supabaseUrl) {
     return [];
   }
@@ -29,7 +30,7 @@ export function getSupabaseContentSources(supabaseUrl = process.env.NEXT_PUBLIC_
 export function createContentSecurityPolicy(
   nonce: string,
   isDevelopment: boolean,
-  supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL,
+  supabaseUrl = getConfiguredSupabaseUrl(),
 ): string {
   const supabaseContentSources = getSupabaseContentSources(supabaseUrl);
   const cspHeader = `

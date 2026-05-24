@@ -1,7 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createContentSecurityPolicy, getSupabaseContentSources } from "./proxy";
 
 describe("content security policy", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it("allows public Supabase Storage images", () => {
     const csp = createContentSecurityPolicy("test-nonce", false, "https://sawbyjtmoltbldkxotkq.supabase.co");
 
@@ -29,5 +33,11 @@ describe("content security policy", () => {
   it("ignores invalid or non-HTTPS Supabase URLs", () => {
     expect(getSupabaseContentSources("not-a-url")).toEqual([]);
     expect(getSupabaseContentSources("http://sawbyjtmoltbldkxotkq.supabase.co")).toEqual([]);
+  });
+
+  it("falls back to the production Supabase project when the env var is unavailable", () => {
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "");
+
+    expect(getSupabaseContentSources()).toEqual(["https://sawbyjtmoltbldkxotkq.supabase.co"]);
   });
 });
