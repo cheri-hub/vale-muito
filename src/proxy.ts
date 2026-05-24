@@ -1,14 +1,43 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-export function proxy(request: NextRequest) {
-  const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
-  const isDevelopment = process.env.NODE_ENV === "development";
+const staticImageContentSources = [
+  "'self'",
+  "data:",
+  "blob:",
+  "https://images.unsplash.com",
+  "https://*.tile.openstreetmap.org",
+];
+
+export function getSupabaseContentSources(supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL): string[] {
+  if (!supabaseUrl) {
+    return [];
+  }
+
+  try {
+    const url = new URL(supabaseUrl);
+
+    if (url.protocol !== "https:") {
+      return [];
+    }
+
+    return [`https://${url.hostname}`];
+  } catch {
+    return [];
+  }
+}
+
+export function createContentSecurityPolicy(
+  nonce: string,
+  isDevelopment: boolean,
+  supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL,
+): string {
+  const supabaseContentSources = getSupabaseContentSources(supabaseUrl);
   const cspHeader = `
     default-src 'self';
     script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDevelopment ? " 'unsafe-eval'" : ""};
     style-src 'self' 'unsafe-inline';
-    img-src 'self' data: blob: https://images.unsplash.com https://*.tile.openstreetmap.org;
-    connect-src 'self' https://*.supabase.co https://*.supabase.in;
+    img-src ${[...staticImageContentSources, ...supabaseContentSources].join(" ")};
+    connect-src ${["'self'", ...supabaseContentSources].join(" ")};
     font-src 'self';
     object-src 'none';
     frame-ancestors 'none';
@@ -16,7 +45,14 @@ export function proxy(request: NextRequest) {
     form-action 'self';
     upgrade-insecure-requests;
   `;
-  const contentSecurityPolicy = cspHeader.replace(/\s{2,}/g, " ").trim();
+
+  return cspHeader.replace(/\s{2,}/g, " ").trim();
+}
+
+export function proxy(request: NextRequest) {
+  const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
+  const isDevelopment = process.env.NODE_ENV === "development";
+  const contentSecurityPolicy = createContentSecurityPolicy(nonce, isDevelopment);
   const requestHeaders = new Headers(request.headers);
 
   requestHeaders.set("x-nonce", nonce);

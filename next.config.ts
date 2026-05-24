@@ -1,5 +1,31 @@
 import type { NextConfig } from "next";
 
+const recommendationPhotoPathname = "/storage/v1/object/public/recommendation-photos/**";
+
+export function getSupabaseImageRemotePatterns(supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL) {
+  if (!supabaseUrl) {
+    return [];
+  }
+
+  try {
+    const url = new URL(supabaseUrl);
+
+    if (url.protocol !== "https:") {
+      return [];
+    }
+
+    return [
+      {
+        protocol: "https" as const,
+        hostname: url.hostname,
+        pathname: recommendationPhotoPathname,
+      },
+    ];
+  } catch {
+    return [];
+  }
+}
+
 const nextConfig: NextConfig = {
   output: "standalone",
   images: {
@@ -8,6 +34,7 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "images.unsplash.com",
       },
+      ...getSupabaseImageRemotePatterns(),
     ],
   },
   async headers() {
