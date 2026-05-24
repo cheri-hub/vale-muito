@@ -3,6 +3,36 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Database } from "@/lib/supabase/database.types";
 import { SupabaseRecommendationsRepository } from "./supabase-recommendations-repository";
 
+describe("SupabaseRecommendationsRepository.list", () => {
+  const secondOrderMock = vi.fn();
+  const firstOrderMock = vi.fn(() => ({ order: secondOrderMock }));
+  const neqMock = vi.fn(() => ({ order: firstOrderMock }));
+  const selectMock = vi.fn(() => ({ neq: neqMock }));
+  const fromMock = vi.fn(() => ({ select: selectMock }));
+  const supabase = { from: fromMock } as unknown as SupabaseClient<Database>;
+  const repository = new SupabaseRecommendationsRepository(supabase);
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("loads reported recommendations while excluding hidden ones", async () => {
+    secondOrderMock.mockResolvedValue({
+      data: [recommendationRow({ status: "reported", report_count: 2 })],
+      error: null,
+    });
+
+    const recommendations = await repository.list();
+
+    expect(fromMock).toHaveBeenCalledWith("recommendations");
+    expect(neqMock).toHaveBeenCalledWith("status", "hidden");
+    expect(firstOrderMock).toHaveBeenCalledWith("value_score", { ascending: false });
+    expect(secondOrderMock).toHaveBeenCalledWith("created_at", { ascending: false });
+    expect(recommendations).toHaveLength(1);
+    expect(recommendations[0]).toMatchObject({ status: "reported", reportCount: 2 });
+  });
+});
+
 describe("SupabaseRecommendationsRepository.listByAuthor", () => {
   const orderMock = vi.fn();
   const eqMock = vi.fn(() => ({ order: orderMock }));
@@ -38,8 +68,31 @@ describe("SupabaseRecommendationsRepository.listByAuthor", () => {
   });
 });
 
-function recommendationRow() {
-  return {
+describe("SupabaseRecommendationsRepository.updateStatus", () => {
+  const rpcMock = vi.fn();
+  const supabase = { rpc: rpcMock } as unknown as SupabaseClient<Database>;
+  const repository = new SupabaseRecommendationsRepository(supabase);
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("throws when the atomic moderation status update fails", async () => {
+    rpcMock.mockResolvedValue({ error: { message: "rpc failed" } });
+
+    await expect(repository.updateStatus("rec-001", "hidden", "admin-1")).rejects.toThrow(
+      "Não foi possível atualizar o status.",
+    );
+    expect(rpcMock).toHaveBeenCalledWith("update_recommendation_status", {
+      p_admin_id: "admin-1",
+      p_next_status: "hidden",
+      p_recommendation_id: "rec-001",
+    });
+  });
+});
+
+function recommendationRow(overrides: Partial<Record<string, unknown>> = {}) {
+  const row = {
     id: "rec-001",
     author_id: "user-bia",
     dish_name: "Sanduíche de porco com picles",
@@ -76,4 +129,6 @@ function recommendationRow() {
       },
     ],
   };
+
+  return { ...row, ...overrides };
 }

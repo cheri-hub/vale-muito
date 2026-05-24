@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
 import { CheckCircle2, ImagePlus, LocateFixed, MapPin, Save, Search, Send } from "lucide-react";
 import {
@@ -45,6 +46,7 @@ interface RecommendationFormMockProps {
 }
 
 export function RecommendationFormMock({ placeAutocompleteEnabled = false, recommendation }: RecommendationFormMockProps) {
+  const router = useRouter();
   const isEditing = Boolean(recommendation);
   const [form, setForm] = useState<RecommendationInput>(recommendation ? {
     dishName: recommendation.dishName,
@@ -152,6 +154,10 @@ export function RecommendationFormMock({ placeAutocompleteEnabled = false, recom
             : await createRecommendationAction(formData);
           setMessage(result.message);
           setMessageMode(result.mode);
+
+          if (!isEditing && result.ok) {
+            router.push("/profile");
+          }
         });
       }}
     >

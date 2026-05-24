@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { EyeOff, RotateCcw, ShieldAlert } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Check, EyeOff, ShieldAlert } from "lucide-react";
 import { updateRecommendationStatusAction } from "@/app/recommendations/actions";
-import type { Recommendation } from "@/domain/recommendations";
+import type { ModerationStatus, Recommendation } from "@/domain/recommendations";
 import { getReportedRecommendations } from "@/lib/recommendations";
 
 interface ModerationQueueProps {
@@ -11,12 +12,26 @@ interface ModerationQueueProps {
 }
 
 export function ModerationQueue({ recommendations }: ModerationQueueProps) {
+  const router = useRouter();
   const reportedRecommendations = useMemo(
     () => getReportedRecommendations(recommendations),
     [recommendations],
   );
-  const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
   const [message, setMessage] = useState<string | null>(null);
+  const [pendingId, setPendingId] = useState<string | null>(null);
+
+  async function updateStatus(recommendationId: string, status: ModerationStatus) {
+    setPendingId(recommendationId);
+
+    try {
+      const result = await updateRecommendationStatusAction(recommendationId, status);
+
+      setMessage(result.message);
+      router.refresh();
+    } finally {
+      setPendingId(null);
+    }
+  }
 
   if (reportedRecommendations.length === 0) {
     return (
@@ -30,7 +45,7 @@ export function ModerationQueue({ recommendations }: ModerationQueueProps) {
     <section className="space-y-4">
       {message ? <p className="rounded-md bg-emerald-50 p-3 text-sm font-medium text-emerald-900">{message}</p> : null}
       {reportedRecommendations.map((recommendation) => {
-        const isHidden = hiddenIds.has(recommendation.id);
+        const isPending = pendingId === recommendation.id;
 
         return (
           <article key={recommendation.id} className="rounded-lg border border-stone-200 bg-white p-4 shadow-sm">
@@ -48,36 +63,27 @@ export function ModerationQueue({ recommendations }: ModerationQueueProps) {
                 </div>
                 <p className="max-w-3xl text-sm leading-6 text-stone-700">{recommendation.whyWorthIt}</p>
               </div>
-              <button
-                type="button"
-                onClick={async () => {
-                  const nextStatus = isHidden ? "reported" : "hidden";
-                  const result = await updateRecommendationStatusAction(recommendation.id, nextStatus);
-
-                  setMessage(result.message);
-                  setHiddenIds((current) => {
-                    const next = new Set(current);
-
-                    if (next.has(recommendation.id)) {
-                      next.delete(recommendation.id);
-                    } else {
-                      next.add(recommendation.id);
-                    }
-
-                    return next;
-                  });
-                }}
-                className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-md border border-stone-200 px-3 text-sm font-semibold text-stone-700 transition hover:bg-stone-50"
-              >
-                {isHidden ? <RotateCcw aria-hidden="true" size={16} /> : <EyeOff aria-hidden="true" size={16} />}
-                {isHidden ? "Restaurar" : "Ocultar"}
-              </button>
+              <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+                <button
+                  type="button"
+                  disabled={isPending}
+                  onClick={() => updateStatus(recommendation.id, "active")}
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-emerald-200 px-3 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <Check aria-hidden="true" size={16} />
+                  Manter ativo
+                </button>
+                <button
+                  type="button"
+                  disabled={isPending}
+                  onClick={() => updateStatus(recommendation.id, "hidden")}
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-stone-200 px-3 text-sm font-semibold text-stone-700 transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <EyeOff aria-hidden="true" size={16} />
+                  Ocultar
+                </button>
+              </div>
             </div>
-            {isHidden ? (
-              <p className="mt-4 rounded-md bg-stone-100 p-3 text-sm font-medium text-stone-700">
-                Oculto nesta sessão. Com Supabase configurado, a ação também é persistida.
-              </p>
-            ) : null}
           </article>
         );
       })}

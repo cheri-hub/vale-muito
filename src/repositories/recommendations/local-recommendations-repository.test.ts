@@ -58,14 +58,15 @@ describe("LocalRecommendationsRepository", () => {
     await expect(repository.listByAuthor("missing-user")).resolves.toEqual([]);
   });
 
-  it("reports and auto-hides after enough reports", async () => {
+  it("reports without hiding until an admin reviews", async () => {
     const repository = new LocalRecommendationsRepository();
 
     await repository.report("rec-001", "user-2", "spam");
     await repository.report("rec-001", "user-3", "spam");
     const recommendation = await repository.report("rec-001", "user-4", "spam");
 
-    expect(recommendation?.status).toBe("hidden");
+    expect(recommendation?.status).toBe("reported");
+    expect(recommendation?.reportCount).toBe(3);
   });
 
   it("updates only recommendations owned by the author", async () => {

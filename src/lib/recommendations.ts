@@ -40,7 +40,7 @@ export function getReportedRecommendations(
   recommendations: readonly Recommendation[],
 ): Recommendation[] {
   return recommendations
-    .filter((recommendation) => recommendation.status === "reported" || recommendation.reportCount > 0)
+    .filter((recommendation) => recommendation.status === "reported")
     .toSorted((first, second) => second.reportCount - first.reportCount);
 }
 

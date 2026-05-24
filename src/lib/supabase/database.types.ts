@@ -178,7 +178,16 @@ export interface Database {
         Relationships: [];
       };
     };
-    Functions: Record<string, never>;
+    Functions: {
+      update_recommendation_status: {
+        Args: {
+          p_admin_id: string;
+          p_next_status: "active" | "reported" | "hidden";
+          p_recommendation_id: string;
+        };
+        Returns: void;
+      };
+    };
     Views: Record<string, never>;
     Enums: {
       user_role: "member" | "admin";

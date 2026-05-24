@@ -1,8 +1,19 @@
 /** @vitest-environment jsdom */
 
 import "@testing-library/jest-dom/vitest";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { Recommendation } from "@/domain/recommendations";
+
+const { pushMock } = vi.hoisted(() => ({
+  pushMock: vi.fn(),
+}));
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    push: pushMock,
+  }),
+}));
 
 vi.mock("next/dynamic", () => ({
   default: () => function MockRecommendationLocationPicker() {
@@ -25,7 +36,40 @@ vi.mock("@/app/recommendations/actions", () => ({
 import * as recommendationActions from "@/app/recommendations/actions";
 import { RecommendationFormMock } from "./RecommendationFormMock";
 
+const existingRecommendation: Recommendation = {
+  id: "rec-1",
+  dishName: "Coxinha cremosa",
+  placeName: "Bar da Esquina",
+  category: "lanche",
+  city: "Piracicaba",
+  neighborhood: "Centro",
+  address: "Rua Boa, 123",
+  latitude: -22.7253,
+  longitude: -47.6492,
+  pricePaid: 18,
+  priceBand: "ate-30",
+  valueScore: 5,
+  tags: ["coxinha"],
+  summary: "Coxinha sequinha e bem recheada.",
+  whyWorthIt: "A massa e o recheio compensam muito pelo preço pago.",
+  imageUrl: "https://example.com/coxinha.jpg",
+  imageAlt: "Coxinha cremosa",
+  author: {
+    id: "user-1",
+    name: "Bia Ramos",
+    handle: "@bia",
+    role: "member",
+  },
+  status: "active",
+  reportCount: 0,
+  createdAt: "2026-05-24T12:00:00.000Z",
+};
+
 describe("RecommendationFormMock", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
 
@@ -55,6 +99,58 @@ describe("RecommendationFormMock", () => {
       message: "Lugar preenchido automaticamente.",
       mode: "supabase",
     });
+
+    vi.mocked(recommendationActions.createRecommendationAction).mockResolvedValue({
+      ok: true,
+      data: { id: "rec-new" },
+      message: "Recomendação publicada.",
+      mode: "supabase",
+    });
+
+    vi.mocked(recommendationActions.updateRecommendationAction).mockResolvedValue({
+      ok: true,
+      data: { id: "rec-1" },
+      message: "Recomendação atualizada.",
+      mode: "supabase",
+    });
+  });
+
+  it("navigates to the profile after publishing a recommendation", async () => {
+    render(<RecommendationFormMock />);
+
+    fillValidRecommendationForm();
+    fireEvent.click(screen.getByRole("button", { name: /publicar recomendação/i }));
+
+    await waitFor(() => {
+      expect(recommendationActions.createRecommendationAction).toHaveBeenCalled();
+    });
+    expect(pushMock).toHaveBeenCalledWith("/profile");
+  });
+
+  it("stays on the form when publishing fails", async () => {
+    vi.mocked(recommendationActions.createRecommendationAction).mockResolvedValue({
+      ok: false,
+      message: "Não foi possível publicar agora.",
+      mode: "supabase",
+    });
+    render(<RecommendationFormMock />);
+
+    fillValidRecommendationForm();
+    fireEvent.click(screen.getByRole("button", { name: /publicar recomendação/i }));
+
+    expect(await screen.findByText("Não foi possível publicar agora.")).toBeInTheDocument();
+    expect(pushMock).not.toHaveBeenCalled();
+  });
+
+  it("does not navigate to profile after editing a recommendation", async () => {
+    render(<RecommendationFormMock recommendation={existingRecommendation} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /salvar alterações/i }));
+
+    await waitFor(() => {
+      expect(recommendationActions.updateRecommendationAction).toHaveBeenCalledWith("rec-1", expect.any(FormData));
+    });
+    expect(pushMock).not.toHaveBeenCalled();
   });
 
   it("autofills place details without overwriting the dish field", async () => {
@@ -96,3 +192,16 @@ describe("RecommendationFormMock", () => {
     expect(screen.getByLabelText("Longitude")).toHaveValue(-47.6492);
   });
 });
+
+function fillValidRecommendationForm() {
+  fireEvent.change(screen.getByLabelText("Prato"), { target: { value: "Coxinha cremosa" } });
+  fireEvent.change(screen.getByPlaceholderText("Ex.: Tigela Norte"), { target: { value: "Bar da Esquina" } });
+  fireEvent.change(screen.getByLabelText("Bairro"), { target: { value: "Centro" } });
+  fireEvent.change(screen.getByLabelText("Quanto você pagou?"), { target: { value: "18" } });
+  fireEvent.change(screen.getByLabelText("Resumo curto"), {
+    target: { value: "Coxinha sequinha e bem recheada." },
+  });
+  fireEvent.change(screen.getByLabelText("Por que vale muito?"), {
+    target: { value: "A massa e o recheio compensam muito pelo preço pago." },
+  });
+}

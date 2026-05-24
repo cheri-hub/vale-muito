@@ -32,7 +32,7 @@ export class SupabaseRecommendationsRepository implements RecommendationReposito
     const { data, error } = await this.supabase
       .from("recommendations")
       .select(recommendationSelect)
-      .eq("status", "active")
+      .neq("status", "hidden")
       .order("value_score", { ascending: false })
       .order("created_at", { ascending: false });
 
@@ -202,17 +202,15 @@ export class SupabaseRecommendationsRepository implements RecommendationReposito
       throw new Error("Admin inválido para auditoria.");
     }
 
-    const { error } = await this.supabase.from("recommendations").update({ status }).eq("id", id);
+    const { error } = await this.supabase.rpc("update_recommendation_status", {
+      p_admin_id: adminId,
+      p_next_status: status,
+      p_recommendation_id: id,
+    });
 
     if (error) {
       throw new Error("Não foi possível atualizar o status.");
     }
-
-    await this.supabase.from("admin_audit_logs").insert({
-      admin_id: adminId,
-      recommendation_id: id,
-      action: status,
-    });
 
     return this.findById(id);
   }
