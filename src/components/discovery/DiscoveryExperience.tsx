@@ -84,8 +84,8 @@ export function DiscoveryExperience({ recommendations }: DiscoveryExperienceProp
         </div>
       </section>
 
-      <div className="mt-4 grid gap-5 lg:grid-cols-[1fr_360px]">
-        <div className="space-y-5">
+      <div className="mt-4 grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="min-w-0 space-y-5">
           <DiscoveryFilters
             filters={filters}
             neighborhoods={neighborhoods}

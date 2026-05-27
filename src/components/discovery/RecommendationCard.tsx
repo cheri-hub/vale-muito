@@ -23,7 +23,7 @@ export function RecommendationCard({ recommendation }: RecommendationCardProps) 
           className="object-cover"
           sizes="(max-width: 768px) 100vw, 420px"
         />
-        <div className="absolute left-3 top-3 rounded-full bg-white/92 px-3 py-1 text-xs font-semibold text-emerald-800 shadow-sm">
+        <div className="absolute left-3 top-3 rounded-full bg-white/92 px-3 py-1 text-xs font-semibold text-emerald-800 shadow-sm dark:bg-stone-950/85 dark:text-emerald-300">
           Vale {recommendation.valueScore}/5
         </div>
       </div>
