@@ -155,6 +155,12 @@ export function RecommendationFormMock({ placeAutocompleteEnabled = false, recom
           setMessage(result.message);
           setMessageMode(result.mode);
 
+          if (isEditing) {
+            const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
+
+            window.scrollTo({ top: 0, behavior: prefersReducedMotion ? "auto" : "smooth" });
+          }
+
           if (!isEditing && result.ok) {
             router.push("/profile");
           }

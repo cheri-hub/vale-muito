@@ -143,6 +143,8 @@ describe("RecommendationFormMock", () => {
   });
 
   it("does not navigate to profile after editing a recommendation", async () => {
+    const scrollToMock = vi.spyOn(window, "scrollTo").mockImplementation(() => undefined);
+
     render(<RecommendationFormMock recommendation={existingRecommendation} />);
 
     fireEvent.click(screen.getByRole("button", { name: /salvar alterações/i }));
@@ -150,6 +152,8 @@ describe("RecommendationFormMock", () => {
     await waitFor(() => {
       expect(recommendationActions.updateRecommendationAction).toHaveBeenCalledWith("rec-1", expect.any(FormData));
     });
+    expect(scrollToMock).toHaveBeenCalledWith({ top: 0, behavior: "smooth" });
+    scrollToMock.mockRestore();
     expect(pushMock).not.toHaveBeenCalled();
   });
 
